@@ -1,0 +1,22 @@
+# React / Node dependencies
+reactapp/node_modules/
+reactapp/build/
+reactapp/dist/
+
+# Spring Boot / Java build files
+springapp/target/
+springapp/.gradle/
+springapp/build/
+*.class
+
+# IDE configurations
+.idea/
+*.iml
+.vscode/
+
+# Ignore the large zip archives causing the loop
+*.zip
+
+# System files
+.DS_Store
+Thumbs.db

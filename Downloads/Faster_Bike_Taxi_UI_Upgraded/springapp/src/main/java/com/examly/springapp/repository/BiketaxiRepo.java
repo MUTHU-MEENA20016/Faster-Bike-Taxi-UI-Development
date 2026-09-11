@@ -1,0 +1,23 @@
+// package com.examly.springapp.repository;
+
+// import java.util.List;
+// import org.springframework.data.jpa.repository.JpaRepository;
+// import com.examly.springapp.model.Biketaxi;
+
+// public interface BiketaxiRepo extends JpaRepository<Biketaxi, Integer> {
+//     List<Biketaxi> findByUsernameIgnoreCase(String username);
+// }
+package com.examly.springapp.repository;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.examly.springapp.model.Biketaxi;
+
+public interface BiketaxiRepo
+        extends JpaRepository<Biketaxi, Integer> {
+
+    List<Biketaxi> findByUsernameIgnoreCase(
+            String username);
+}
