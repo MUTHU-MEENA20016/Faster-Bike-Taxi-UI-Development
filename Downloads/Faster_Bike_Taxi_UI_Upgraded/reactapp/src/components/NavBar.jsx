@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { apiRequest } from "../services/api";
 
 function Navbar() {
   const {
@@ -8,6 +9,83 @@ function Navbar() {
     role,
     logoutUser,
   } = useAuth();
+
+  const [hasApplied, setHasApplied] = useState(false);
+
+  useEffect(() => {
+    const checkApplication = async () => {
+      if (!token || role !== "DRIVER") {
+        setHasApplied(false);
+        return;
+      }
+
+      const username = localStorage.getItem("username");
+
+      /*
+       * First check this specific user's local state.
+       */
+      if (
+        username &&
+        localStorage.getItem(
+          `applicationSubmitted_${username}`
+        ) === "true"
+      ) {
+        setHasApplied(true);
+        return;
+      }
+
+      /*
+       * Backend remains the source of truth.
+       * This also handles cases such as:
+       * - browser refresh
+       * - previously submitted application
+       */
+      try {
+        const applications = await apiRequest(
+          "/api/applications/my"
+        );
+
+        const alreadyApplied =
+          Array.isArray(applications) &&
+          applications.length > 0;
+
+        setHasApplied(alreadyApplied);
+
+        /*
+         * Remember the result for this specific user.
+         */
+        if (alreadyApplied && username) {
+          localStorage.setItem(
+            `applicationSubmitted_${username}`,
+            "true"
+          );
+        }
+      } catch (error) {
+        setHasApplied(false);
+      }
+    };
+
+    checkApplication();
+
+    /*
+     * Listen for successful submission from ApplyForm.
+     */
+    const handleApplicationSubmitted = () => {
+      setHasApplied(true);
+    };
+
+    window.addEventListener(
+      "applicationSubmitted",
+      handleApplicationSubmitted
+    );
+
+    return () => {
+      window.removeEventListener(
+        "applicationSubmitted",
+        handleApplicationSubmitted
+      );
+    };
+  }, [token, role]);
 
   return (
     <header className="site-header">
@@ -63,7 +141,7 @@ function Navbar() {
 
           {token && (
             <>
-              {role === "DRIVER" && (
+              {role === "DRIVER" && !hasApplied && (
                 <Link
                   className="nav-cta"
                   to="/apply"

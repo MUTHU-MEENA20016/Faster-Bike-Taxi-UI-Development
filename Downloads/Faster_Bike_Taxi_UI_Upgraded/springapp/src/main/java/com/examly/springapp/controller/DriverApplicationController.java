@@ -1,212 +1,8 @@
-// package com.examly.springapp.controller;
-
-// import java.util.List;
-
-// import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.web.bind.annotation.*;
-
-// import com.examly.springapp.model.DriverApplication;
-// import com.examly.springapp.service.DriverApplicationService;
-
-// @RestController
-// @RequestMapping("/api/applications")
-// @CrossOrigin("*")
-// public class DriverApplicationController {
-
-//   @Autowired
-//   private DriverApplicationService service;
-
-//   @PostMapping
-//   public DriverApplication saveApplication(
-//       @RequestBody DriverApplication application){
-//     return service.saveApplication(application);
-//   }
-
-//   @GetMapping
-//   public List<DriverApplication> getAllApplications(){
-//     return service.getAllApplications();
-//   }
-
-//   @GetMapping("/{id}")
-//   public DriverApplication getApplicationById(
-//       @PathVariable Long id){
-//     return service.getApplicationById(id);
-//   }
-
-//   @PutMapping("/{id}")
-//   public DriverApplication updateApplication(
-//       @PathVariable Long id,
-//       @RequestBody DriverApplication application){
-//     return service.updateApplication(id, application);
-//   }
-
-//   @DeleteMapping("/{id}")
-//   public void deleteApplication(@PathVariable Long id){
-//     service.deleteApplication(id);
-//   }
-// }
-
-
-
-// package com.examly.springapp.controller;
-
-// import java.security.Principal;
-// import java.time.LocalDateTime;
-// import java.util.List;
-// import java.util.stream.Collectors;
-
-// import javax.transaction.Transactional;
-
-// import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.http.HttpStatus;
-// import org.springframework.http.MediaType;
-// import org.springframework.http.ResponseEntity;
-// import org.springframework.security.core.Authentication;
-// import org.springframework.web.bind.annotation.*;
-
-// import com.examly.springapp.model.Document;
-// import com.examly.springapp.model.DriverApplication;
-// import com.examly.springapp.repository.DocumentRepository;
-// import com.examly.springapp.repository.DriverApplicationRepository;
-// import com.examly.springapp.service.DriverApplicationService;
-
-// @RestController
-// @RequestMapping("/api/applications")
-// @CrossOrigin("*")
-// public class DriverApplicationController {
-
-//     @Autowired private DriverApplicationService service;
-//     @Autowired private DriverApplicationRepository repository;
-//     @Autowired private DocumentRepository documentRepository;
-
-//     @PostMapping
-//     public DriverApplication saveApplication(@RequestBody DriverApplication application) {
-//         return service.saveApplication(application);
-//     }
-
-//     @GetMapping
-//     public ResponseEntity<?> getAllApplications(Authentication auth) {
-//         if (!hasManagement(auth)) {
-//             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Management access required");
-//         }
-//         return ResponseEntity.ok(service.getAllApplications());
-//     }
-
-//     @GetMapping("/my")
-//     public ResponseEntity<?> getMyApplications(Principal principal) {
-//         if (principal == null) {
-//             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login required");
-//         }
-//         return ResponseEntity.ok(repository.findByApplicantUsernameIgnoreCase(principal.getName()));
-//     }
-
-//     @GetMapping("/{id}")
-//     public DriverApplication getApplicationById(@PathVariable Long id) {
-//         return service.getApplicationById(id);
-//     }
-
-//     @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-//     @Transactional
-//     public ResponseEntity<?> submit(
-//             @RequestParam String name,
-//             @RequestParam String bikeNumber,
-//             @RequestParam Integer age,
-//             @RequestParam String phoneNumber,
-//             @RequestParam String address,
-//             @RequestParam String emergencyContact,
-//             @RequestParam String drivingLicenseNumber,
-//             @RequestParam(required = false) String username,
-//             @RequestParam String uploadToken,
-//             Principal principal) {
-
-//         String owner = principal != null ? principal.getName() : username;
-//         if (owner == null || owner.trim().isEmpty()) {
-//             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login required");
-//         }
-
-//         if (!repository.findByApplicantUsernameIgnoreCase(owner).isEmpty()) {
-//             return ResponseEntity.status(HttpStatus.CONFLICT).body("You already have an application.");
-//         }
-
-//         String bike = bikeNumber.trim().toUpperCase();
-//         String license = drivingLicenseNumber.trim().toUpperCase();
-//         String phone = phoneNumber.trim();
-
-//         if (repository.findByBikeNumber(bike) != null) {
-//             return ResponseEntity.status(HttpStatus.CONFLICT).body("Bike number already exists in system");
-//         }
-//         if (repository.findByPhoneNumber(phone) != null) {
-//             return ResponseEntity.status(HttpStatus.CONFLICT).body("Phone number is already used by another application");
-//         }
-//         if (repository.findByDrivingLicenseNumber(license) != null) {
-//             return ResponseEntity.status(HttpStatus.CONFLICT).body("Driving license number already exists in system");
-//         }
-//         if (age < 18 || age > 65) {
-//             return ResponseEntity.badRequest().body("Age must be between 18 and 65");
-//         }
-
-//         List<Document> tempDocs = documentRepository.findAll().stream()
-//                 .filter(d -> uploadToken.equals(d.getUploadToken()) && d.getApplication() == null)
-//                 .collect(Collectors.toList());
-
-//         if (tempDocs.size() != 4) {
-//             return ResponseEntity.badRequest().body("Upload all four required documents before final submission");
-//         }
-
-//         try {
-//             DriverApplication app = new DriverApplication();
-//             app.setName(name.trim());
-//             app.setBikeNumber(bike);
-//             app.setAge(age);
-//             app.setPhoneNumber(phone);
-//             app.setAddress(address.trim());
-//             app.setEmergencyContact(emergencyContact.trim());
-//             app.setDrivingLicenseNumber(license);
-//             app.setApplicantUsername(owner);
-//             app.setStatus(DriverApplication.ApplicationStatus.SUBMITTED);
-//             app.setVerificationStage("DOCUMENT_VERIFICATION");
-//             app.setSubmissionDate(LocalDateTime.now());
-//             app.setLastModified(LocalDateTime.now());
-
-//             app = repository.save(app);
-
-//             for (Document document : tempDocs) {
-//                 document.setApplication(app);
-//                 document.setUploadToken(null);
-//                 documentRepository.save(document);
-//             }
-
-//             return ResponseEntity.status(HttpStatus.CREATED).body(app);
-//         } catch (Exception e) {
-//             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                     .body("Unable to store application and documents");
-//         }
-//     }
-
-//     @PutMapping("/{id}")
-//     public DriverApplication updateApplication(@PathVariable Long id,
-//                                                 @RequestBody DriverApplication application) {
-//         return service.updateApplication(id, application);
-//     }
-
-//     @DeleteMapping("/{id}")
-//     public void deleteApplication(@PathVariable Long id) {
-//         service.deleteApplication(id);
-//     }
-
-//     private boolean hasManagement(Authentication authentication) {
-//         return authentication != null && authentication.getAuthorities().stream()
-//                 .anyMatch(a -> a.getAuthority().equals("ROLE_MANAGER")
-//                         || a.getAuthority().equals("ROLE_ADMIN"));
-//     }
-// }
-
 package com.examly.springapp.controller;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
@@ -297,7 +93,6 @@ public class DriverApplicationController {
             @RequestParam String name,
             @RequestParam String bikeNumber,
             @RequestParam Integer age,
-            @RequestParam String phoneNumber,
             @RequestParam String address,
             @RequestParam String emergencyContact,
             @RequestParam String drivingLicenseNumber,
@@ -307,7 +102,7 @@ public class DriverApplicationController {
 
         /*
          * IMPORTANT:
-         * Never trust username sent by React.
+         * Never trust username or phone number sent by React.
          *
          * The authenticated JWT principal is the owner.
          */
@@ -345,7 +140,36 @@ public class DriverApplicationController {
         }
 
         /*
-         * One active application per driver.
+         * Get the registered user from the database.
+         *
+         * The phone number is taken from the User account
+         * created during registration.
+         */
+        User applicant =
+                userRepository
+                    .findByUsername(owner)
+                    .orElse(null);
+
+        if (applicant == null) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body("User account not found");
+        }
+
+        String phone = applicant.getPhoneNumber();
+
+        if (phone == null || phone.trim().isEmpty()) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(
+                        "Phone number is not registered for this account"
+                    );
+        }
+
+        phone = phone.trim();
+
+        /*
+         * One application per logged-in driver.
          */
         if (!repository
                 .findByApplicantUsernameIgnoreCase(owner)
@@ -362,15 +186,19 @@ public class DriverApplicationController {
         String license =
                 drivingLicenseNumber.trim().toUpperCase();
 
-        String phone =
-                phoneNumber.trim();
-
+        /*
+         * Bike number must be unique.
+         */
         if (repository.findByBikeNumber(bike) != null) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body("Bike number already exists in system");
         }
 
+        /*
+         * Registered phone number must not already belong
+         * to another application.
+         */
         if (repository.findByPhoneNumber(phone) != null) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
@@ -379,6 +207,9 @@ public class DriverApplicationController {
                     );
         }
 
+        /*
+         * Driving license must be unique.
+         */
         if (repository
                 .findByDrivingLicenseNumber(license) != null) {
 
@@ -433,11 +264,20 @@ public class DriverApplicationController {
             application.setName(name.trim());
             application.setBikeNumber(bike);
             application.setAge(age);
+
+            /*
+             * IMPORTANT:
+             * Phone number comes from the registered User.
+             * It does NOT come from the Apply Form.
+             */
             application.setPhoneNumber(phone);
+
             application.setAddress(address.trim());
+
             application.setEmergencyContact(
                     emergencyContact.trim()
             );
+
             application.setDrivingLicenseNumber(license);
 
             /*
@@ -461,9 +301,8 @@ public class DriverApplicationController {
                     LocalDateTime.now()
             );
 
-            application =
-                    repository.save(application);
-
+            application = repository.save(application);
+            createManagerApplicationNotification(application);
             /*
              * Attach the four temporary documents
              * to the submitted application.
@@ -480,43 +319,35 @@ public class DriverApplicationController {
             /*
              * Notify the applicant.
              */
-            User applicant =
-                    userRepository
-                        .findByUsername(owner)
-                        .orElse(null);
+            Notification notification =
+                    new Notification();
 
-            if (applicant != null) {
+            notification.setUser(applicant);
+            notification.setRelatedApplication(
+                    application
+            );
 
-                Notification notification =
-                        new Notification();
+            notification.setMessage(
+                "Your application has been submitted successfully."
+            );
 
-                notification.setUser(applicant);
-                notification.setRelatedApplication(
-                        application
-                );
+            notification.setType(
+                Notification.NotificationType.SUCCESS
+            );
 
-                notification.setMessage(
-                    "Your application has been submitted successfully."
-                );
+            notification.setPriority(
+                Notification.NotificationPriority.MEDIUM
+            );
 
-                notification.setType(
-                    Notification.NotificationType.SUCCESS
-                );
+            notification.setIsRead(false);
 
-                notification.setPriority(
-                    Notification.NotificationPriority.MEDIUM
-                );
+            notification.setCreatedDate(
+                LocalDateTime.now()
+            );
 
-                notification.setIsRead(false);
-
-                notification.setCreatedDate(
-                    LocalDateTime.now()
-                );
-
-                notificationRepository.save(
+            notificationRepository.save(
                     notification
-                );
-            }
+            );
 
             return ResponseEntity
                     .status(HttpStatus.CREATED)
@@ -695,7 +526,86 @@ public class DriverApplicationController {
                 "Application deleted successfully"
         );
     }
+    private void createManagerApplicationNotification(
+        DriverApplication application) {
 
+    /*
+     * Count all applications that are waiting for management review.
+     */
+    long count = repository.countByStatus(
+            DriverApplication.ApplicationStatus.SUBMITTED
+    );
+
+    /*
+     * Create ONE notification for each manager.
+     */
+    List<User> managers = userRepository.findAll()
+            .stream()
+            .filter(user -> user.getRole() == User.Role.MANAGER)
+            .collect(java.util.stream.Collectors.toList());
+
+    for (User manager : managers) {
+
+        /*
+         * Check whether a manager notification already exists.
+         * If it exists, update it instead of creating another one.
+         */
+        List<Notification> existingNotifications =
+                notificationRepository
+                    .findByUserUsernameOrderByCreatedDateDesc(
+                            manager.getUsername()
+                    );
+
+        Notification managerNotification = null;
+
+        for (Notification n : existingNotifications) {
+            if (n.getMessage() != null &&
+                n.getMessage().contains("application") &&
+                n.getMessage().contains("to review")) {
+
+                managerNotification = n;
+                break;
+            }
+        }
+
+        if (managerNotification == null) {
+            managerNotification = new Notification();
+            managerNotification.setUser(manager);
+            managerNotification.setIsRead(false);
+            managerNotification.setType(
+                    Notification.NotificationType.INFO
+            );
+            managerNotification.setPriority(
+                    Notification.NotificationPriority.HIGH
+            );
+        }
+
+        /*
+         * Update the SAME notification with the latest count.
+         */
+        if (count == 1) {
+            managerNotification.setMessage(
+                    "1 application to review."
+            );
+        } else {
+            managerNotification.setMessage(
+                    count + " applications to review."
+            );
+        }
+
+        managerNotification.setCreatedDate(
+                LocalDateTime.now()
+        );
+
+        /*
+         * Keep the latest submitted application related
+         * to this notification.
+         */
+        managerNotification.setRelatedApplication(application);
+
+        notificationRepository.save(managerNotification);
+    }
+}
     private void createStatusNotification(
             DriverApplication application,
             DriverApplication.ApplicationStatus status) {

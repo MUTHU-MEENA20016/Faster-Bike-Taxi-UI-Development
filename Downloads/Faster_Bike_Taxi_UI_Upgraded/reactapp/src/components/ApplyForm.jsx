@@ -28,7 +28,6 @@ function ApplyForm() {
     name: "",
     bikeNumber: "",
     age: "",
-    phoneNumber: "",
     address: "",
     emergencyContact: "",
     drivingLicenseNumber: "",
@@ -221,11 +220,6 @@ function ApplyForm() {
       e.age = "Age must be between 18 and 65";
     }
 
-    if (!/^[6-9]\d{9}$/.test(formData.phoneNumber.trim())) {
-      e.phoneNumber =
-        "Enter a valid 10-digit mobile number";
-    }
-
     if (!formData.address.trim()) {
       e.address = "Address is required";
     }
@@ -272,10 +266,6 @@ function ApplyForm() {
       formData.bikeNumber.trim().toUpperCase()
     );
     body.append("age", String(Number(formData.age)));
-    body.append(
-      "phoneNumber",
-      formData.phoneNumber.trim()
-    );
     body.append("address", formData.address.trim());
     body.append(
       "emergencyContact",
@@ -310,6 +300,25 @@ function ApplyForm() {
             "Unable to submit application."
         );
       }
+
+      /*
+       * Mark this specific user's application
+       * as submitted.
+       */
+      if (username) {
+        localStorage.setItem(
+          `applicationSubmitted_${username}`,
+          "true"
+        );
+      }
+
+      /*
+       * Tell Navbar immediately.
+       * No browser refresh is required.
+       */
+      window.dispatchEvent(
+        new Event("applicationSubmitted")
+      );
 
       setSubmitted(true);
 
@@ -347,7 +356,6 @@ function ApplyForm() {
 
   return (
     <main className="form-page">
-
       <div className="section-heading">
         <span className="eyebrow">
           DRIVER ONBOARDING
@@ -365,7 +373,6 @@ function ApplyForm() {
         className="glass-form"
         onSubmit={handleSubmit}
       >
-
         <div className="field">
           <label>Name *</label>
 
@@ -414,23 +421,6 @@ function ApplyForm() {
           {errors.age && (
             <span className="error">
               {errors.age}
-            </span>
-          )}
-        </div>
-
-        <div className="field">
-          <label>Phone Number *</label>
-
-          <input
-            name="phoneNumber"
-            value={formData.phoneNumber}
-            onChange={handleChange}
-            placeholder="10-digit mobile number"
-          />
-
-          {errors.phoneNumber && (
-            <span className="error">
-              {errors.phoneNumber}
             </span>
           )}
         </div>
@@ -488,7 +478,6 @@ function ApplyForm() {
         </div>
 
         <div className="document-upload-section">
-
           <h3>Required Documents</h3>
 
           <p className="muted">
@@ -502,9 +491,7 @@ function ApplyForm() {
                 className="document-upload-card"
                 key={key}
               >
-
                 <div className="document-upload-info">
-
                   <strong>{label} *</strong>
 
                   {!uploaded[key] ? (
@@ -539,7 +526,6 @@ function ApplyForm() {
                     </>
                   ) : (
                     <div className="uploaded-file-row">
-
                       <span className="uploaded-file">
                         ✓ {files[key]?.name}
                       </span>
@@ -554,7 +540,6 @@ function ApplyForm() {
                       >
                         ✕
                       </button>
-
                     </div>
                   )}
 
@@ -563,13 +548,10 @@ function ApplyForm() {
                       {errors[key]}
                     </span>
                   )}
-
                 </div>
-
               </div>
             )
           )}
-
         </div>
 
         {serverError && (
@@ -581,20 +563,13 @@ function ApplyForm() {
         <button
           className="primary-button full-button"
           type="submit"
-          disabled={
-            loading ||
-            REQUIRED_DOCUMENTS.some(
-              ({ key }) => !uploaded[key]
-            )
-          }
+          disabled={loading}
         >
           {loading
             ? "Submitting Application..."
             : "Submit Application"}
         </button>
-
       </form>
-
     </main>
   );
 }

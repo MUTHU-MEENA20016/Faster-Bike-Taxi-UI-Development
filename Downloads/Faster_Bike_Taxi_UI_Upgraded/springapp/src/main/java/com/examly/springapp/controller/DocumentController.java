@@ -1,197 +1,3 @@
-// package com.examly.springapp.controller;
-
-// import java.util.List;
-
-// import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.web.bind.annotation.*;
-
-// import com.examly.springapp.model.Document;
-// import com.examly.springapp.service.DocumentService;
-
-// @RestController
-// @RequestMapping("/api/documents")
-// @CrossOrigin("*")
-// public class DocumentController {
-
-//   @Autowired
-//   private DocumentService service;
-
-//   @PostMapping
-//   public Document saveDocument(@RequestBody Document document){
-//     return service.saveDocument(document);
-//   }
-
-//   @GetMapping
-//   public List<Document> getAllDocuments(){
-//     return service.getAllDocuments();
-//   }
-
-//   @GetMapping("/{id}")
-//   public Document getDocumentById(@PathVariable Long id){
-//     return service.getDocumentById(id);
-//   }
-
-//   @PutMapping("/{id}")
-//   public Document updateDocument(@PathVariable Long id,
-//                   @RequestBody Document document){
-//     return service.updateDocument(id, document);
-//   }
-
-//   @DeleteMapping("/{id}")
-//   public void deleteDocument(@PathVariable Long id){
-//     service.deleteDocument(id);
-//   }
-// }
-
-
-// package com.examly.springapp.controller;
-
-// import java.security.Principal;
-// import java.time.LocalDateTime;
-// import java.util.List;
-// import java.util.UUID;
-
-// import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.http.HttpHeaders;
-// import org.springframework.http.HttpStatus;
-// import org.springframework.http.MediaType;
-// import org.springframework.http.ResponseEntity;
-// import org.springframework.web.bind.annotation.*;
-// import org.springframework.web.multipart.MultipartFile;
-
-// import com.examly.springapp.model.Document;
-// import com.examly.springapp.model.DriverApplication;
-// import com.examly.springapp.repository.DocumentRepository;
-// import com.examly.springapp.repository.DriverApplicationRepository;
-// import com.examly.springapp.service.DocumentService;
-
-// @RestController
-// @RequestMapping("/api/documents")
-// @CrossOrigin("*")
-// public class DocumentController {
-
-//     @Autowired
-//     private DocumentService service;
-
-//     @Autowired
-//     private DocumentRepository repository;
-
-//     @Autowired
-//     private DriverApplicationRepository applicationRepository;
-
-//     @PostMapping
-//     public Document saveDocument(@RequestBody Document document) {
-//         return service.saveDocument(document);
-//     }
-
-//     @PostMapping(value = "/temp", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-//     public ResponseEntity<?> uploadTemp(
-//             @RequestPart("file") MultipartFile file,
-//             @RequestParam String documentType,
-//             @RequestParam String uploadToken) {
-//         try {
-//             if (file.isEmpty()) {
-//                 return ResponseEntity.badRequest().body("Choose a file first");
-//             }
-//             if (file.getSize() > 10 * 1024 * 1024) {
-//                 return ResponseEntity.badRequest().body("Each document must be 10 MB or smaller");
-//             }
-
-//             Document d = new Document();
-//             d.setDocumentType(Document.DocumentType.valueOf(documentType));
-//             d.setFileName(file.getOriginalFilename());
-//             d.setFileSize(file.getSize());
-//             d.setContentType(file.getContentType());
-//             d.setFileData(file.getBytes());
-//             d.setUploadDate(LocalDateTime.now());
-//             d.setVerificationStatus(Document.VerificationStatus.PENDING);
-//             d.setUploadToken(uploadToken);
-
-//             return ResponseEntity.status(HttpStatus.CREATED).body(repository.save(d));
-//         } catch (Exception e) {
-//             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Unable to upload document");
-//         }
-//     }
-
-//     @GetMapping
-//     public ResponseEntity<?> getAllDocuments(Principal principal) {
-//         if (!isManagement(principal)) {
-//             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Management access required");
-//         }
-//         return ResponseEntity.ok(service.getAllDocuments());
-//     }
-
-//     @GetMapping("/application/{applicationId}")
-//     public ResponseEntity<?> getByApplication(@PathVariable Long applicationId, Principal principal) {
-//         if (principal == null) {
-//             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login required");
-//         }
-//         if (!isManagement(principal)) {
-//             DriverApplication app = applicationRepository.findById(applicationId).orElse(null);
-//             if (app == null || !principal.getName().equalsIgnoreCase(app.getApplicantUsername())) {
-//                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You can only view your own documents");
-//             }
-//         }
-//         return ResponseEntity.ok(repository.findByApplicationId(applicationId));
-//     }
-
-//     @GetMapping("/{id}")
-//     public Document getDocumentById(@PathVariable Long id) {
-//         return service.getDocumentById(id);
-//     }
-
-//     @GetMapping("/{id}/download")
-//     public ResponseEntity<byte[]> download(@PathVariable Long id, Principal principal) {
-//         Document d = repository.findById(id).orElse(null);
-//         if (d == null || d.getFileData() == null) {
-//             return ResponseEntity.notFound().build();
-//         }
-//         if (!isManagement(principal) && d.getApplication() != null && !principal.getName().equalsIgnoreCase(d.getApplication().getApplicantUsername())) {
-//             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-//         }
-
-//         MediaType type = MediaType.APPLICATION_OCTET_STREAM;
-//         try {
-//             if (d.getContentType() != null) {
-//                 type = MediaType.parseMediaType(d.getContentType());
-//             }
-//         } catch (Exception ignored) {
-//         }
-
-//         return ResponseEntity.ok()
-//                 .contentType(type)
-//                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + (d.getFileName() == null ? "document" : d.getFileName()) + "\"")
-//                 .body(d.getFileData());
-//     }
-
-//     @PatchMapping("/{id}/status")
-//     public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestParam Document.VerificationStatus status) {
-//         Document d = repository.findById(id).orElse(null);
-//         if (d == null) {
-//             return ResponseEntity.notFound().build();
-//         }
-//         d.setVerificationStatus(status);
-//         d.setVerificationDate(status == Document.VerificationStatus.PENDING ? null : LocalDateTime.now());
-//         return ResponseEntity.ok(repository.save(d));
-//     }
-
-//     @PutMapping("/{id}")
-//     public Document updateDocument(@PathVariable Long id, @RequestBody Document document) {
-//         return service.updateDocument(id, document);
-//     }
-
-//     @DeleteMapping("/{id}")
-//     public void deleteDocument(@PathVariable Long id) {
-//         service.deleteDocument(id);
-//     }
-
-//     private boolean isManagement(Principal p) {
-//         return p != null && p instanceof org.springframework.security.core.Authentication &&
-//                 ((org.springframework.security.core.Authentication) p).getAuthorities().stream()
-//                         .anyMatch(x -> x.getAuthority().equals("ROLE_MANAGER") || x.getAuthority().equals("ROLE_ADMIN"));
-//     }
-// }
-
 package com.examly.springapp.controller;
 
 import java.security.Principal;
@@ -229,20 +35,70 @@ public class DocumentController {
     /*
      * Management only.
      */
+    // @GetMapping
+    // public ResponseEntity<?> getAllDocuments(
+    //         Principal principal) {
+
+    //     if (!isManagement(principal)) {
+    //         return ResponseEntity
+    //                 .status(HttpStatus.FORBIDDEN)
+    //                 .body("Management access required");
+    //     }
+
+    //     return ResponseEntity.ok(
+    //             service.getAllDocuments()
+    //     );
+    // }
     @GetMapping
-    public ResponseEntity<?> getAllDocuments(
-            Principal principal) {
+public ResponseEntity<?> getAllDocuments(
+        Principal principal) {
 
-        if (!isManagement(principal)) {
-            return ResponseEntity
-                    .status(HttpStatus.FORBIDDEN)
-                    .body("Management access required");
-        }
-
-        return ResponseEntity.ok(
-                service.getAllDocuments()
-        );
+    if (!isManagement(principal)) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body("Management access required");
     }
+
+    List<Document> documents = service.getAllDocuments();
+
+    List<java.util.Map<String, Object>> result = documents.stream()
+            .map(document -> {
+                java.util.Map<String, Object> data =
+                        new java.util.HashMap<>();
+
+                data.put("id", document.getId());
+                data.put("documentType", document.getDocumentType());
+                data.put("fileName", document.getFileName());
+                data.put("fileSize", document.getFileSize());
+                data.put("contentType", document.getContentType());
+                data.put("uploadDate", document.getUploadDate());
+                data.put("verificationStatus",
+                        document.getVerificationStatus());
+
+                DriverApplication application =
+                        document.getApplication();
+
+                if (application != null) {
+                    data.put("applicantName",
+                            application.getName());
+
+                    data.put("applicantPhone",
+                            application.getPhoneNumber());
+
+                    data.put("applicationId",
+                            application.getId());
+                } else {
+                    data.put("applicantName", "—");
+                    data.put("applicantPhone", "—");
+                    data.put("applicationId", null);
+                }
+
+                return data;
+            })
+            .toList();
+
+    return ResponseEntity.ok(result);
+}
 
     /*
      * Temporary document upload.

@@ -28,7 +28,7 @@ function DriverDashboard() {
           <div className="stat-card"><span className="stat-icon">🏍️</span><div><small>Bike</small><strong>{app?.bikeNumber || "Not added"}</strong></div></div>
           <div className="stat-card"><span className="stat-icon">📄</span><div><small>Documents</small><strong>{docsStatus}</strong></div></div>
         </div>
-        {!app ? <div className="dashboard-card role-dashboard"><div className="feature-icon">🏍️</div><h3>Start your driver application</h3><p>Submit your details and four required documents to begin verification.</p><Link className="primary-button" to="/apply">Apply Now</Link></div> : <>
+        {!app ? <div className="dashboard-card role-dashboard"><div className="feature-icon">🏍️</div><h3>Start your driver application</h3><p>Submit your details and four required documents to begin verification.</p></div> : <>
           <div className="dashboard-card"><div className="card-heading"><h3>Application overview</h3><p>Your submitted information and current verification stage.</p></div><div className="application-row"><div><span>Driver</span><strong>{app.name}</strong></div><div><span>Phone</span><strong>{app.phoneNumber}</strong></div><div><span>Status</span><strong className="status-badge">{status.replaceAll("_", " ")}</strong></div></div><div className="page-actions"><Link className="secondary-button" to="/bikedetails">View Bike Details</Link><Link className="secondary-button" to="/documents">View Documents</Link><Link className="secondary-button" to="/notifications">Notifications</Link></div></div>
         </>}
       </>}
