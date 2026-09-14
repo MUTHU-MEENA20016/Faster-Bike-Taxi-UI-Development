@@ -25,11 +25,15 @@ import com.examly.springapp.repository.NotificationRepository;
 import com.examly.springapp.repository.UserRepository;
 
 import com.examly.springapp.service.DocumentService;
+import com.examly.springapp.model.AuditLog;
+import com.examly.springapp.repository.AuditLogRepository;
 
 @RestController
 @RequestMapping("/api/documents")
 @CrossOrigin("*")
 public class DocumentController {
+
+    private final AuditLogRepository auditLogRepository;
 
     @Autowired
     private DocumentService service;
@@ -45,6 +49,10 @@ public class DocumentController {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    DocumentController(AuditLogRepository auditLogRepository) {
+        this.auditLogRepository = auditLogRepository;
+    }
 
     /*
      * Management can see all submitted documents.
@@ -674,12 +682,15 @@ public class DocumentController {
         Document document =
                 repository.findById(id)
                         .orElse(null);
-
+        
         if (document == null) {
             return ResponseEntity
                     .notFound()
                     .build();
         }
+        Document.VerificationStatus oldStatus =
+        document.getVerificationStatus();
+        
 
         /*
          * Rejection requires a reason.
@@ -711,7 +722,84 @@ public class DocumentController {
 
         Document savedDocument =
                 repository.save(document);
+        if (oldStatus != status) {
 
+    AuditLog auditLog = new AuditLog();
+
+    String managerName =
+            principal.getName();
+
+    DriverApplication application =
+            document.getApplication();
+
+    String applicantName =
+            application != null
+            ? application.getName()
+            : "Unknown applicant";
+
+    String action;
+
+    if (status ==
+            Document.VerificationStatus.VERIFIED) {
+
+        action =
+                applicantName
+                + "'s document has been verified by Manager "
+                + managerName;
+
+    } else if (status ==
+            Document.VerificationStatus.REJECTED) {
+
+        action =
+                applicantName
+                + "'s document has been rejected by Manager "
+                + managerName;
+
+    } else {
+
+        action =
+                applicantName
+                + "'s document status changed to "
+                + status.name()
+                + " by Manager "
+                + managerName;
+    }
+
+    auditLog.setAction(action);
+
+    /*
+     * Keep the APPLICATION ID here,
+     * because Admin wants to identify
+     * the applicant/application.
+     */
+    auditLog.setEntityType(
+            "DRIVER_APPLICATION"
+    );
+
+    auditLog.setEntityId(
+            application != null
+            ? application.getId()
+            : null
+    );
+
+    auditLog.setOldValue(
+            oldStatus == null
+            ? null
+            : oldStatus.name()
+    );
+
+    auditLog.setNewValue(
+            applicantName
+    );
+
+    auditLog.setTimestamp(
+            LocalDateTime.now()
+    );
+
+    auditLogRepository.save(
+            auditLog
+    );
+}
         /*
          * If ONE document is rejected,
          * the entire application is rejected.

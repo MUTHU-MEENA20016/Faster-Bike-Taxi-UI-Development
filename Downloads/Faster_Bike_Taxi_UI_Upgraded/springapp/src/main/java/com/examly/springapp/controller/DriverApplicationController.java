@@ -22,7 +22,8 @@ import com.examly.springapp.repository.DriverApplicationRepository;
 import com.examly.springapp.repository.NotificationRepository;
 import com.examly.springapp.repository.UserRepository;
 import com.examly.springapp.service.DriverApplicationService;
-
+import com.examly.springapp.model.AuditLog;
+import com.examly.springapp.repository.AuditLogRepository;
 @RestController
 @RequestMapping("/api/applications")
 @CrossOrigin("*")
@@ -43,6 +44,8 @@ public class DriverApplicationController {
     @Autowired
     private NotificationRepository notificationRepository;
 
+    @Autowired
+private AuditLogRepository auditLogRepository;
     /*
      * Management endpoint.
      */
@@ -342,7 +345,34 @@ public class DriverApplicationController {
 
             application =
                     repository.save(application);
+           AuditLog auditLog = new AuditLog();
 
+auditLog.setAction(
+        application.getName()
+        + " has submitted the application"
+);
+
+auditLog.setEntityType(
+        "DRIVER_APPLICATION"
+);
+
+auditLog.setEntityId(
+        application.getId()
+);
+
+auditLog.setOldValue(null);
+
+auditLog.setNewValue(
+        application.getName()
+);
+
+auditLog.setTimestamp(
+        LocalDateTime.now()
+);
+
+auditLogRepository.save(
+        auditLog
+);
             /*
              * Attach temporary documents
              * to this application.
@@ -589,7 +619,69 @@ public class DriverApplicationController {
 
         application =
                 repository.save(application);
+       if (oldStatus != newStatus) {
 
+    AuditLog auditLog = new AuditLog();
+
+    String managerName =
+            authentication.getName();
+
+    String action;
+
+    if (newStatus ==
+            DriverApplication.ApplicationStatus.APPROVED) {
+
+        action =
+                application.getName()
+                + "'s application has been approved by Manager "
+                + managerName;
+
+    } else if (newStatus ==
+            DriverApplication.ApplicationStatus.REJECTED) {
+
+        action =
+                application.getName()
+                + "'s application has been rejected by Manager "
+                + managerName;
+
+    } else {
+
+        action =
+                application.getName()
+                + "'s application status changed to "
+                + newStatus.name().replace("_", " ")
+                + " by Manager "
+                + managerName;
+    }
+
+    auditLog.setAction(action);
+
+    auditLog.setEntityType(
+            "DRIVER_APPLICATION"
+    );
+
+    auditLog.setEntityId(
+            application.getId()
+    );
+
+    auditLog.setOldValue(
+            oldStatus == null
+            ? null
+            : oldStatus.name()
+    );
+
+    auditLog.setNewValue(
+            application.getName()
+    );
+
+    auditLog.setTimestamp(
+            LocalDateTime.now()
+    );
+
+    auditLogRepository.save(
+            auditLog
+    );
+}
         /*
          * Notify applicant only when
          * the status actually changes.

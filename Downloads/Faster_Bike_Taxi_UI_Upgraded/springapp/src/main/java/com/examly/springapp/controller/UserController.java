@@ -1,3 +1,47 @@
+// // package com.examly.springapp.controller;
+
+// // import java.util.List;
+
+// // import org.springframework.beans.factory.annotation.Autowired;
+// // import org.springframework.web.bind.annotation.*;
+
+// // import com.examly.springapp.model.User;
+// // import com.examly.springapp.service.UserService;
+
+// // @RestController
+// // @RequestMapping("/api/users")
+// // @CrossOrigin("*")
+// // public class UserController {
+
+// //   @Autowired
+// //   private UserService userService;
+
+// //   @PostMapping
+// //   public User saveUser(@RequestBody User user){
+// //     return userService.saveUser(user);
+// //   }
+
+// //   @GetMapping
+// //   public List<User> getAllUsers(){
+// //     return userService.getAllUsers();
+// //   }
+
+// //   @GetMapping("/{id}")
+// //   public User getUserById(@PathVariable Long id){
+// //     return userService.getUserById(id);
+// //   }
+
+// //   @PutMapping("/{id}")
+// //   public User updateUser(@PathVariable Long id,
+// //               @RequestBody User user){
+// //     return userService.updateUser(id,user);
+// //   }
+
+// //   @DeleteMapping("/{id}")
+// //   public void deleteUser(@PathVariable Long id){
+// //     userService.deleteUser(id);
+// //   }
+// // }
 // package com.examly.springapp.controller;
 
 // import java.util.List;
@@ -13,34 +57,36 @@
 // @CrossOrigin("*")
 // public class UserController {
 
-//   @Autowired
-//   private UserService userService;
+//     @Autowired
+//     private UserService userService;
 
-//   @PostMapping
-//   public User saveUser(@RequestBody User user){
-//     return userService.saveUser(user);
-//   }
+//     @PostMapping
+//     public User saveUser(@RequestBody User user) {
+//         return userService.saveUser(user);
+//     }
 
-//   @GetMapping
-//   public List<User> getAllUsers(){
-//     return userService.getAllUsers();
-//   }
+//     @GetMapping
+//     public List<User> getAllUsers() {
+//         return userService.getAllUsers();
+//     }
 
-//   @GetMapping("/{id}")
-//   public User getUserById(@PathVariable Long id){
-//     return userService.getUserById(id);
-//   }
+//     @GetMapping("/{id}")
+//     public User getUserById(@PathVariable Long id) {
+//         return userService.getUserById(id);
+//     }
 
-//   @PutMapping("/{id}")
-//   public User updateUser(@PathVariable Long id,
-//               @RequestBody User user){
-//     return userService.updateUser(id,user);
-//   }
+//     @PutMapping("/{id}")
+//     public User updateUser(
+//             @PathVariable Long id,
+//             @RequestBody User user) {
 
-//   @DeleteMapping("/{id}")
-//   public void deleteUser(@PathVariable Long id){
-//     userService.deleteUser(id);
-//   }
+//         return userService.updateUser(id, user);
+//     }
+
+//     @DeleteMapping("/{id}")
+//     public void deleteUser(@PathVariable Long id) {
+//         userService.deleteUser(id);
+//     }
 // }
 package com.examly.springapp.controller;
 
@@ -60,31 +106,47 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+
     @PostMapping
-    public User saveUser(@RequestBody User user) {
+    public User saveUser(
+            @RequestBody User user) {
+
         return userService.saveUser(user);
     }
 
+
     @GetMapping
     public List<User> getAllUsers() {
+
         return userService.getAllUsers();
     }
 
+
     @GetMapping("/{id}")
-    public User getUserById(@PathVariable Long id) {
+    public User getUserById(
+            @PathVariable Long id) {
+
         return userService.getUserById(id);
     }
+
 
     @PutMapping("/{id}")
     public User updateUser(
             @PathVariable Long id,
             @RequestBody User user) {
 
-        return userService.updateUser(id, user);
+        return userService.updateUser(
+            id,
+            user
+        );
     }
 
+
     @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable Long id) {
+    public void deleteUser(
+            @PathVariable Long id) {
+
         userService.deleteUser(id);
     }
+
 }
