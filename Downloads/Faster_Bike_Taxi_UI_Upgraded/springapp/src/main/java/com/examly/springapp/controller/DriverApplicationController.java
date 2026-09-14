@@ -101,10 +101,7 @@ public class DriverApplicationController {
             Principal principal) {
 
         /*
-         * IMPORTANT:
-         * Never trust username or phone number sent by React.
-         *
-         * The authenticated JWT principal is the owner.
+         * The authenticated JWT user is the owner.
          */
         if (principal == null) {
             return ResponseEntity
@@ -115,7 +112,7 @@ public class DriverApplicationController {
         String owner = principal.getName();
 
         /*
-         * Only DRIVER should submit a driver application.
+         * Only DRIVER can submit an application.
          */
         if (!(principal instanceof Authentication)) {
             return ResponseEntity
@@ -136,14 +133,13 @@ public class DriverApplicationController {
         if (!driver) {
             return ResponseEntity
                     .status(HttpStatus.FORBIDDEN)
-                    .body("Only drivers can submit applications");
+                    .body(
+                        "Only drivers can submit applications"
+                    );
         }
 
         /*
-         * Get the registered user from the database.
-         *
-         * The phone number is taken from the User account
-         * created during registration.
+         * Get the registered user.
          */
         User applicant =
                 userRepository
@@ -156,9 +152,15 @@ public class DriverApplicationController {
                     .body("User account not found");
         }
 
-        String phone = applicant.getPhoneNumber();
+        /*
+         * Phone number comes from registration.
+         */
+        String phone =
+                applicant.getPhoneNumber();
 
-        if (phone == null || phone.trim().isEmpty()) {
+        if (phone == null ||
+                phone.trim().isEmpty()) {
+
             return ResponseEntity
                     .badRequest()
                     .body(
@@ -169,7 +171,7 @@ public class DriverApplicationController {
         phone = phone.trim();
 
         /*
-         * One application per logged-in driver.
+         * One application per driver.
          */
         if (!repository
                 .findByApplicantUsernameIgnoreCase(owner)
@@ -177,7 +179,9 @@ public class DriverApplicationController {
 
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
-                    .body("You already have an application.");
+                    .body(
+                        "You already have an application."
+                    );
         }
 
         String bike =
@@ -190,16 +194,20 @@ public class DriverApplicationController {
          * Bike number must be unique.
          */
         if (repository.findByBikeNumber(bike) != null) {
+
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
-                    .body("Bike number already exists in system");
+                    .body(
+                        "Bike number already exists in system"
+                    );
         }
 
         /*
-         * Registered phone number must not already belong
-         * to another application.
+         * Registered phone number must be unique
+         * across applications.
          */
         if (repository.findByPhoneNumber(phone) != null) {
+
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(
@@ -220,35 +228,52 @@ public class DriverApplicationController {
                     );
         }
 
-        if (age == null || age < 18 || age > 65) {
-            return ResponseEntity
-                    .badRequest()
-                    .body("Age must be between 18 and 65");
-        }
-
-        if (name == null || name.trim().isEmpty() ||
-            address == null || address.trim().isEmpty() ||
-            emergencyContact == null ||
-            emergencyContact.trim().isEmpty()) {
+        /*
+         * Age validation.
+         */
+        if (age == null ||
+                age < 18 ||
+                age > 65) {
 
             return ResponseEntity
                     .badRequest()
-                    .body("All required application fields must be provided");
+                    .body(
+                        "Age must be between 18 and 65"
+                    );
         }
 
         /*
-         * Get only temporary documents belonging to
-         * this upload token.
+         * Required fields.
+         */
+        if (name == null ||
+                name.trim().isEmpty() ||
+                address == null ||
+                address.trim().isEmpty() ||
+                emergencyContact == null ||
+                emergencyContact.trim().isEmpty()) {
+
+            return ResponseEntity
+                    .badRequest()
+                    .body(
+                        "All required application fields must be provided"
+                    );
+        }
+
+        /*
+         * Get temporary documents belonging
+         * to this upload token.
          */
         List<Document> tempDocs =
-                documentRepository.findByUploadTokenAndApplicationIsNull(
+                documentRepository
+                    .findByUploadTokenAndApplicationIsNull(
                         uploadToken
-                );
+                    );
 
         /*
          * Exactly four required documents.
          */
         if (tempDocs.size() != 4) {
+
             return ResponseEntity
                     .badRequest()
                     .body(
@@ -261,29 +286,43 @@ public class DriverApplicationController {
             DriverApplication application =
                     new DriverApplication();
 
-            application.setName(name.trim());
-            application.setBikeNumber(bike);
-            application.setAge(age);
+            application.setName(
+                    name.trim()
+            );
+
+            application.setBikeNumber(
+                    bike
+            );
+
+            application.setAge(
+                    age
+            );
 
             /*
-             * IMPORTANT:
-             * Phone number comes from the registered User.
-             * It does NOT come from the Apply Form.
+             * Phone comes from registered User.
              */
-            application.setPhoneNumber(phone);
+            application.setPhoneNumber(
+                    phone
+            );
 
-            application.setAddress(address.trim());
+            application.setAddress(
+                    address.trim()
+            );
 
             application.setEmergencyContact(
                     emergencyContact.trim()
             );
 
-            application.setDrivingLicenseNumber(license);
+            application.setDrivingLicenseNumber(
+                    license
+            );
 
             /*
              * Owner comes from JWT.
              */
-            application.setApplicantUsername(owner);
+            application.setApplicantUsername(
+                    owner
+            );
 
             application.setStatus(
                     DriverApplication.ApplicationStatus.SUBMITTED
@@ -301,28 +340,45 @@ public class DriverApplicationController {
                     LocalDateTime.now()
             );
 
-            application = repository.save(application);
-            createManagerApplicationNotification(application);
+            application =
+                    repository.save(application);
+
             /*
-             * Attach the four temporary documents
-             * to the submitted application.
+             * Attach temporary documents
+             * to this application.
              */
             for (Document document : tempDocs) {
 
-                document.setApplication(application);
+                document.setApplication(
+                        application
+                );
 
-                document.setUploadToken(null);
+                document.setUploadToken(
+                        null
+                );
 
-                documentRepository.save(document);
+                documentRepository.save(
+                        document
+                );
             }
 
             /*
-             * Notify the applicant.
+             * Notify managers.
+             */
+            createManagerApplicationNotification(
+                    application
+            );
+
+            /*
+             * Notify applicant.
              */
             Notification notification =
                     new Notification();
 
-            notification.setUser(applicant);
+            notification.setUser(
+                    applicant
+            );
+
             notification.setRelatedApplication(
                     application
             );
@@ -339,10 +395,12 @@ public class DriverApplicationController {
                 Notification.NotificationPriority.MEDIUM
             );
 
-            notification.setIsRead(false);
+            notification.setIsRead(
+                    false
+            );
 
             notification.setCreatedDate(
-                LocalDateTime.now()
+                    LocalDateTime.now()
             );
 
             notificationRepository.save(
@@ -356,7 +414,9 @@ public class DriverApplicationController {
         } catch (Exception e) {
 
             return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .status(
+                        HttpStatus.INTERNAL_SERVER_ERROR
+                    )
                     .body(
                         "Unable to store application and documents"
                     );
@@ -373,16 +433,23 @@ public class DriverApplicationController {
             Authentication authentication) {
 
         if (!hasManagement(authentication)) {
+
             return ResponseEntity
                     .status(HttpStatus.FORBIDDEN)
-                    .body("Management access required");
+                    .body(
+                        "Management access required"
+                    );
         }
 
         DriverApplication application =
-                repository.findById(id).orElse(null);
+                repository
+                    .findById(id)
+                    .orElse(null);
 
         if (application == null) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity
+                    .notFound()
+                    .build();
         }
 
         DriverApplication.ApplicationStatus oldStatus =
@@ -392,35 +459,92 @@ public class DriverApplicationController {
                 request.getStatus();
 
         if (newStatus == null) {
+
             return ResponseEntity
                     .badRequest()
-                    .body("Application status is required");
+                    .body(
+                        "Application status is required"
+                    );
         }
 
-        application.setStatus(newStatus);
-        application.setLastModified(
-                LocalDateTime.now()
-        );
-
+        /*
+         * APPROVAL RULE:
+         *
+         * Manager cannot approve an application
+         * until all four documents are verified.
+         */
         if (newStatus ==
+                DriverApplication.ApplicationStatus.APPROVED) {
+
+            List<Document> documents =
+                    documentRepository
+                        .findByApplicationId(id);
+
+            /*
+             * Exactly four documents are required.
+             */
+            if (documents.size() != 4) {
+
+                return ResponseEntity
+                        .badRequest()
+                        .body(
+                            "All four documents must be submitted before approval"
+                        );
+            }
+
+            /*
+             * Every document must be VERIFIED.
+             */
+            boolean allVerified =
+                    documents.stream()
+                        .allMatch(
+                            document ->
+                                document.getVerificationStatus()
+                                    ==
+                                Document.VerificationStatus.VERIFIED
+                        );
+
+            if (!allVerified) {
+
+                return ResponseEntity
+                        .badRequest()
+                        .body(
+                            "All four documents must be verified before approval"
+                        );
+            }
+
+            application.setStatus(
+                    DriverApplication.ApplicationStatus.APPROVED
+            );
+
+            application.setVerificationStage(
+                    "COMPLETED"
+            );
+
+            application.setRejectionReason(
+                    null
+            );
+        }
+
+        /*
+         * Move application to document verification.
+         */
+        else if (newStatus ==
                 DriverApplication.ApplicationStatus.DOCUMENT_VERIFICATION) {
+
+            application.setStatus(
+                    DriverApplication.ApplicationStatus.DOCUMENT_VERIFICATION
+            );
 
             application.setVerificationStage(
                     "DOCUMENT_VERIFICATION"
             );
         }
 
-        if (newStatus ==
-                DriverApplication.ApplicationStatus.APPROVED) {
-
-            application.setVerificationStage(
-                    "COMPLETED"
-            );
-
-            application.setRejectionReason(null);
-        }
-
-        if (newStatus ==
+        /*
+         * Reject application.
+         */
+        else if (newStatus ==
                 DriverApplication.ApplicationStatus.REJECTED) {
 
             String reason =
@@ -436,6 +560,10 @@ public class DriverApplicationController {
                         );
             }
 
+            application.setStatus(
+                    DriverApplication.ApplicationStatus.REJECTED
+            );
+
             application.setRejectionReason(
                     reason.trim()
             );
@@ -445,46 +573,73 @@ public class DriverApplicationController {
             );
         }
 
+        /*
+         * Other statuses.
+         */
+        else {
+
+            application.setStatus(
+                    newStatus
+            );
+        }
+
+        application.setLastModified(
+                LocalDateTime.now()
+        );
+
         application =
                 repository.save(application);
 
         /*
-         * Send notification only when the status
-         * actually changes.
+         * Notify applicant only when
+         * the status actually changes.
          */
         if (oldStatus != newStatus) {
+
             createStatusNotification(
                     application,
                     newStatus
             );
         }
 
-        return ResponseEntity.ok(application);
+        return ResponseEntity.ok(
+                application
+        );
     }
 
+    /*
+     * Get one application.
+     */
     @GetMapping("/{id}")
     public ResponseEntity<?> getApplicationById(
             @PathVariable Long id,
             Principal principal) {
 
         if (principal == null) {
+
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body("Login required");
         }
 
         DriverApplication application =
-                repository.findById(id).orElse(null);
+                repository
+                    .findById(id)
+                    .orElse(null);
 
         if (application == null) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity
+                    .notFound()
+                    .build();
         }
 
         /*
-         * Management can view any application.
+         * Manager/Admin can view any application.
          */
         if (isManagement(principal)) {
-            return ResponseEntity.ok(application);
+            return ResponseEntity.ok(
+                    application
+            );
         }
 
         /*
@@ -502,22 +657,33 @@ public class DriverApplicationController {
                     );
         }
 
-        return ResponseEntity.ok(application);
+        return ResponseEntity.ok(
+                application
+        );
     }
 
+    /*
+     * Delete application.
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteApplication(
             @PathVariable Long id,
             Authentication authentication) {
 
         if (!hasManagement(authentication)) {
+
             return ResponseEntity
                     .status(HttpStatus.FORBIDDEN)
-                    .body("Management access required");
+                    .body(
+                        "Management access required"
+                    );
         }
 
         if (!repository.existsById(id)) {
-            return ResponseEntity.notFound().build();
+
+            return ResponseEntity
+                    .notFound()
+                    .build();
         }
 
         service.deleteApplication(id);
@@ -526,86 +692,133 @@ public class DriverApplicationController {
                 "Application deleted successfully"
         );
     }
+
+    /*
+     * Creates ONE review notification for each manager.
+     */
     private void createManagerApplicationNotification(
-        DriverApplication application) {
+            DriverApplication application) {
 
-    /*
-     * Count all applications that are waiting for management review.
-     */
-    long count = repository.countByStatus(
-            DriverApplication.ApplicationStatus.SUBMITTED
-    );
+        long count =
+                repository.countByStatus(
+                    DriverApplication.ApplicationStatus.SUBMITTED
+                );
 
-    /*
-     * Create ONE notification for each manager.
-     */
-    List<User> managers = userRepository.findAll()
-            .stream()
-            .filter(user -> user.getRole() == User.Role.MANAGER)
-            .collect(java.util.stream.Collectors.toList());
-
-    for (User manager : managers) {
-
-        /*
-         * Check whether a manager notification already exists.
-         * If it exists, update it instead of creating another one.
-         */
-        List<Notification> existingNotifications =
-                notificationRepository
-                    .findByUserUsernameOrderByCreatedDateDesc(
-                            manager.getUsername()
+        List<User> managers =
+                userRepository.findAll()
+                    .stream()
+                    .filter(
+                        user ->
+                            user.getRole()
+                                == User.Role.MANAGER
+                    )
+                    .collect(
+                        java.util.stream.Collectors.toList()
                     );
 
-        Notification managerNotification = null;
+        for (User manager : managers) {
 
-        for (Notification n : existingNotifications) {
-            if (n.getMessage() != null &&
-                n.getMessage().contains("application") &&
-                n.getMessage().contains("to review")) {
+            List<Notification>
+                    existingNotifications =
+                        notificationRepository
+                            .findByUserUsernameOrderByCreatedDateDesc(
+                                manager.getUsername()
+                            );
 
-                managerNotification = n;
-                break;
+            Notification managerNotification =
+                    null;
+
+            /*
+             * Find the existing application-review
+             * notification instead of creating
+             * a new one every time.
+             */
+            for (
+                Notification notification :
+                    existingNotifications
+            ) {
+
+                if (
+                    notification.getMessage() != null
+                    &&
+                    notification
+                        .getMessage()
+                        .contains(
+                            "application"
+                        )
+                    &&
+                    notification
+                        .getMessage()
+                        .contains(
+                            "to review"
+                        )
+                ) {
+
+                    managerNotification =
+                            notification;
+
+                    break;
+                }
             }
-        }
 
-        if (managerNotification == null) {
-            managerNotification = new Notification();
-            managerNotification.setUser(manager);
-            managerNotification.setIsRead(false);
-            managerNotification.setType(
+            if (managerNotification == null) {
+
+                managerNotification =
+                        new Notification();
+
+                managerNotification.setUser(
+                        manager
+                );
+
+                managerNotification.setType(
                     Notification.NotificationType.INFO
-            );
-            managerNotification.setPriority(
+                );
+
+                managerNotification.setPriority(
                     Notification.NotificationPriority.HIGH
-            );
-        }
+                );
+            }
 
-        /*
-         * Update the SAME notification with the latest count.
-         */
-        if (count == 1) {
-            managerNotification.setMessage(
+            /*
+             * Notification becomes unread again
+             * whenever the count changes.
+             */
+            managerNotification.setIsRead(
+                    false
+            );
+
+            if (count == 1) {
+
+                managerNotification.setMessage(
                     "1 application to review."
+                );
+
+            } else {
+
+                managerNotification.setMessage(
+                    count +
+                    " applications to review."
+                );
+            }
+
+            managerNotification.setCreatedDate(
+                    LocalDateTime.now()
             );
-        } else {
-            managerNotification.setMessage(
-                    count + " applications to review."
+
+            managerNotification.setRelatedApplication(
+                    application
+            );
+
+            notificationRepository.save(
+                    managerNotification
             );
         }
-
-        managerNotification.setCreatedDate(
-                LocalDateTime.now()
-        );
-
-        /*
-         * Keep the latest submitted application related
-         * to this notification.
-         */
-        managerNotification.setRelatedApplication(application);
-
-        notificationRepository.save(managerNotification);
     }
-}
+
+    /*
+     * Creates applicant notification
+     * when application status changes.
+     */
     private void createStatusNotification(
             DriverApplication application,
             DriverApplication.ApplicationStatus status) {
@@ -617,7 +830,8 @@ public class DriverApplicationController {
         User applicant =
                 userRepository
                     .findByUsername(
-                        application.getApplicantUsername()
+                        application
+                            .getApplicantUsername()
                     )
                     .orElse(null);
 
@@ -628,10 +842,22 @@ public class DriverApplicationController {
         Notification notification =
                 new Notification();
 
-        notification.setUser(applicant);
-        notification.setRelatedApplication(application);
-        notification.setIsRead(false);
-        notification.setCreatedDate(LocalDateTime.now());
+        notification.setUser(
+                applicant
+        );
+
+        notification.setRelatedApplication(
+                application
+        );
+
+        notification.setIsRead(
+                false
+        );
+
+        notification.setCreatedDate(
+                LocalDateTime.now()
+        );
+
         notification.setPriority(
                 Notification.NotificationPriority.HIGH
         );
@@ -646,8 +872,9 @@ public class DriverApplicationController {
             notification.setMessage(
                 "Your application is approved."
             );
+        }
 
-        } else if (status ==
+        else if (status ==
                 DriverApplication.ApplicationStatus.REJECTED) {
 
             notification.setType(
@@ -658,10 +885,11 @@ public class DriverApplicationController {
                 "Your application is rejected. Reason: "
                 + application.getRejectionReason()
                 + ". Please correct the required "
-                + "information/documents and submit again."
+                + "information/documents."
             );
+        }
 
-        } else if (status ==
+        else if (status ==
                 DriverApplication.ApplicationStatus.DOCUMENT_VERIFICATION) {
 
             notification.setType(
@@ -675,34 +903,52 @@ public class DriverApplicationController {
             notification.setMessage(
                 "Your application has moved to document verification."
             );
+        }
 
-        } else {
+        else {
+
             notification.setType(
                     Notification.NotificationType.INFO
             );
 
             notification.setMessage(
                 "Your application status has been updated to "
-                + status.name().replace("_", " ") + "."
+                + status.name().replace("_", " ")
+                + "."
             );
         }
 
-        notificationRepository.save(notification);
+        notificationRepository.save(
+                notification
+        );
     }
 
+    /*
+     * Checks Manager/Admin access.
+     */
     private boolean hasManagement(
             Authentication authentication) {
 
-        return authentication != null &&
-                authentication.getAuthorities()
+        return authentication != null
+                &&
+                authentication
+                    .getAuthorities()
                     .stream()
-                    .anyMatch(a ->
-                        a.getAuthority()
-                            .equals("ROLE_MANAGER") ||
-                        a.getAuthority()
-                            .equals("ROLE_ADMIN"));
+                    .anyMatch(
+                        authority ->
+                            authority
+                                .getAuthority()
+                                .equals("ROLE_MANAGER")
+                            ||
+                            authority
+                                .getAuthority()
+                                .equals("ROLE_ADMIN")
+                    );
     }
 
+    /*
+     * Checks Manager/Admin access from Principal.
+     */
     private boolean isManagement(
             Principal principal) {
 
@@ -713,6 +959,8 @@ public class DriverApplicationController {
         Authentication authentication =
                 (Authentication) principal;
 
-        return hasManagement(authentication);
+        return hasManagement(
+                authentication
+        );
     }
 }

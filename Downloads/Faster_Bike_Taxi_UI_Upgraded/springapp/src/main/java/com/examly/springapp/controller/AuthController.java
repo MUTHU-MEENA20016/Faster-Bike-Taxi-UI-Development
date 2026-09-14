@@ -40,14 +40,15 @@ public class AuthController {
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<?> register(
+            @RequestBody Map<String, Object> request) {
 
         String username = request.get("username") != null
-                ? request.get("username").toString()
+                ? request.get("username").toString().trim()
                 : null;
 
         String email = request.get("email") != null
-                ? request.get("email").toString()
+                ? request.get("email").toString().trim()
                 : null;
 
         String password = request.get("passwordHash") != null
@@ -57,23 +58,31 @@ public class AuthController {
                     : null;
 
         String phoneNumber = request.get("phoneNumber") != null
-                ? request.get("phoneNumber").toString()
+                ? request.get("phoneNumber").toString().trim()
                 : null;
 
-        if (username == null || username.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Username is required");
+        if (username == null || username.isEmpty()) {
+            return ResponseEntity
+                    .badRequest()
+                    .body("Username is required");
         }
 
-        if (email == null || email.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Email is required");
+        if (email == null || email.isEmpty()) {
+            return ResponseEntity
+                    .badRequest()
+                    .body("Email is required");
         }
 
         if (password == null || password.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Password is required");
+            return ResponseEntity
+                    .badRequest()
+                    .body("Password is required");
         }
 
-        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Phone number is required");
+        if (phoneNumber == null || phoneNumber.isEmpty()) {
+            return ResponseEntity
+                    .badRequest()
+                    .body("Phone number is required");
         }
 
         if (userRepository.existsByUsername(username)) {
@@ -88,15 +97,30 @@ public class AuthController {
                     .body("Email already exists");
         }
 
+        /*
+         * Each registered user must have a unique phone number.
+         * This prevents another account from being created with
+         * the same mobile number.
+         */
+        if (userRepository.existsByPhoneNumber(phoneNumber)) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body("Phone number already registered");
+        }
+
         User user = new User();
 
-        user.setUsername(username.trim());
-        user.setEmail(email.trim());
+        user.setUsername(username);
+        user.setEmail(email);
 
-        // Convert the plain password into a BCrypt password before saving.
-        user.setPasswordHash(passwordEncoder.encode(password));
+        // Store the password as a BCrypt hash.
+        user.setPasswordHash(
+                passwordEncoder.encode(password)
+        );
 
-        user.setPhoneNumber(phoneNumber.trim());
+        user.setPhoneNumber(phoneNumber);
+
+        // Public registration creates DRIVER accounts.
         user.setRole(Role.DRIVER);
 
         userRepository.save(user);
@@ -107,7 +131,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequest authRequest) {
+    public ResponseEntity<?> login(
+            @RequestBody AuthRequest authRequest) {
 
         try {
             authenticationManager.authenticate(
@@ -137,6 +162,8 @@ public class AuthController {
                 user.getRole().name()
         );
 
-        return ResponseEntity.ok(new AuthResponse(token));
+        return ResponseEntity.ok(
+                new AuthResponse(token)
+        );
     }
 }
